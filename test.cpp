@@ -1,5 +1,7 @@
-#include<bits/stdc++.h>
+#include <iostream>
 #include <curl/curl.h>
+#include <string>
+#include<gtest/gtest.h>
 
 using namespace std;
 
@@ -37,7 +39,6 @@ public:
 
     virtual string get_url() = 0;
     virtual string get_response_headers() = 0;
-    // virtual void init_curl_request() = 0;
     virtual string get_response_data() =0;
 };
 
@@ -48,7 +49,7 @@ class GETRequest : public API
     public:
     GETRequest(string url){
         set_url(url);
-        init_curl_request(); //change made
+        init_curl_request(); 
     }
 
     string get_url()
@@ -75,9 +76,10 @@ class GETRequest : public API
 
 class POSTRequest : public API{
     public:
-    POSTRequest(string url, string data){
+    POSTRequest(string url, string data, string header){
         set_url(url);
         set_data(data);
+        add_headers(header);
         cout << "Data set \n";
         init_curl_request();
     }
@@ -87,7 +89,14 @@ class POSTRequest : public API{
         const char *data = input.c_str();
         curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
     }
-
+    void add_headers(string header_value){
+        struct curl_slist *headers = NULL;
+        const char *data = header_value.c_str();
+        headers = curl_slist_append(headers, data);
+        // headers = curl_slist_append(headers, data);
+        // headers = curl_slist_append(headers, "constant: JSESSIONID=B35E9391E2D699737D30AC6652B8A90E");
+        curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
+    }
     string get_url()
     {
         curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &url);
@@ -113,8 +122,7 @@ class Creator{
 
     string getUrl(){
         API* api = this->FactoryMethod();
-        cout << "URL: " << api->get_url();
-        return "Success";
+        return api->get_url();
     }
 
     string getHeaders(){
@@ -145,43 +153,45 @@ class GetCreator: public Creator{
 class PostCreator: public Creator{
     public:
     string param;
+    string head;
 
-    PostCreator(string input, string data){
+    PostCreator(string input, string data, string h){
         requestedURL = input;
         param = data;
+        head = h;
     };
 
     API* FactoryMethod(){
-        return new POSTRequest(requestedURL, param);
+        return new POSTRequest(requestedURL, param, head);
     }
 };
-
 void ClientCode(Creator &creator){
     
-    // creator.getUrl();
+    string ans = creator.getUrl();
     // creator.getHeaders();
-    creator.getResponse();
+    // creator.getResponse();
 };
+
+
+TEST(GETRequestTEST, testingForGET)
+{  
+    Creator* creator = new GetCreator("https://google.co.in/");
+    cout<< creator->getUrl() <<endl;
+    ASSERT_STREQ(creator->getUrl().c_str(), "https://google.co.in/");
+}
+
 
 int main()
 {
 
-    // Creator* creator = new GetCreator("https://api.kanye.rest");
-    // ClientCode(*creator);
+    Creator* creator = new GetCreator("https://www.google.com");
+    ClientCode(*creator);    
+    
+    //Creator *creator2 = new PostCreator("http://ptsv2.com/t/lhwz4-1641123474/post", "{\"submit\":\"ishika\",\"submit\":\"1\"}", "Content-Type: application/json");
+    //ClientCode(*creator2);
 
-    Creator *creator2 = new PostCreator("https://www.google.com", "submit = 1");
-    ClientCode(*creator2);
+    testing::InitGoogleTest();
+    return RUN_ALL_TESTS();
 
-    // GETRequest request("https://www.google.co.in/");
-
-    // // request.set_url("https://www.google.co.in/");
-    // request.init_curl_request();
-    // string myurl = request.get_url();
-    // request.curl_cleanup();
-
-    // cout << "gud moning" << endl;
-    // cout << myurl << endl;
-    // cout << request.get_response_headers();
-    // // cout << request.get_response_data();
     return 0;
 }
