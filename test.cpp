@@ -3,40 +3,26 @@
 
 using namespace std;
 
-class API
-{
-public:
-    CURL *curl = curl_easy_init();
-    char *url;
-    string request_headers;
-    string response_string;
-    string response_headers;
-
-    // virtual void set_url(string url);
-    virtual string get_url() = 0;
-    virtual string get_response_headers() = 0;
-    virtual void init_curl_request() = 0;
-};
-
 size_t writeFunction(void *ptr, size_t size, size_t nmemb, std::string *data)
 {
     data->append((char *)ptr, size * nmemb);
     return size * nmemb;
 }
 
-class GETRequest : public API
+class API
 {
-    private:
+public:
+
+    CURL *curl = curl_easy_init();
+    char *url;
+    string request_headers;
+    string response_string;
+    string response_headers;
+
     void set_url(string url)
     {
         curl_easy_setopt(curl, CURLOPT_URL, url.c_str());
         
-    }
-    
-    public:
-    GETRequest(string url){
-        set_url(url);
-        init_curl_request(); //change made
     }
 
     void init_curl_request()
@@ -47,6 +33,22 @@ class GETRequest : public API
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response_headers);
         curl_easy_perform(curl);
         cout << "Request made succesfully\n";
+    }
+
+    virtual string get_url() = 0;
+    virtual string get_response_headers() = 0;
+    // virtual void init_curl_request() = 0;
+    virtual string get_response_data() =0;
+};
+
+
+
+class GETRequest : public API
+{
+    public:
+    GETRequest(string url){
+        set_url(url);
+        init_curl_request(); //change made
     }
 
     string get_url()
@@ -72,18 +74,18 @@ class GETRequest : public API
 };
 
 class POSTRequest : public API{
-    public: 
-    POSTRequest(string url){
-        cout << url  << endl;
+    public:
+    POSTRequest(string url, string data){
+        set_url(url);
+        set_data(data);
+        cout << "Data set \n";
+        init_curl_request();
     }
 
-    void init_curl_request()
+    void set_data(string input)
     {
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeFunction);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response_headers);
-        curl_easy_perform(curl);
+        const char *data = input.c_str();
+        curl_easy_setopt(curl, CURLOPT_POSTFIELDS, data);
     }
 
     string get_url()
@@ -93,9 +95,12 @@ class POSTRequest : public API{
     }
 
     string get_response_headers(){
-        curl_easy_getinfo(curl, CURLINFO_EFFECTIVE_URL, &url);
         
-        return "success";
+        return response_headers;
+    }
+
+    string get_response_data(){
+        return response_string;
     }
 };
 
@@ -104,36 +109,25 @@ class Creator{
 
     string requestedURL;
 
-    CURL *curl = curl_easy_init();
-    char *url;
-    string request_headers;
-    string response_string;
-    string response_headers;
-    
-
-    void init_curl_request()
-    {
-
-        curl_easy_setopt(curl, CURLOPT_WRITEFUNCTION, writeFunction);
-        curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
-        curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response_headers);
-        curl_easy_perform(curl);
-    }
-
     virtual API* FactoryMethod() =0;
 
     string getUrl(){
         API* api = this->FactoryMethod();
-        cout <<  api->get_url();
+        cout << "URL: " << api->get_url();
         return "Success";
     }
 
     string getHeaders(){
         API* api = this->FactoryMethod();
-        cout <<  api->get_response_headers();
+        cout << "RESPONSE HEADERS: " <<  api->get_response_headers();
         return "Success";
     }
 
+    string getResponse(){
+        API* api = this->FactoryMethod();
+        cout << "RESPONSE DATA" <<  api->get_response_data();
+        return "Success";
+    }
 };
 
 class GetCreator: public Creator{
@@ -150,27 +144,33 @@ class GetCreator: public Creator{
 
 class PostCreator: public Creator{
     public:
+    string param;
 
-    PostCreator(string input){
+    PostCreator(string input, string data){
         requestedURL = input;
+        param = data;
     };
 
     API* FactoryMethod(){
-        return new POSTRequest(requestedURL);
+        return new POSTRequest(requestedURL, param);
     }
 };
 
 void ClientCode(Creator &creator){
     
-    creator.getUrl();
-    creator.getHeaders();
+    // creator.getUrl();
+    // creator.getHeaders();
+    creator.getResponse();
 };
 
 int main()
 {
 
-    Creator* creator = new GetCreator("https://www.google.co.in/");
-    ClientCode(*creator);
+    // Creator* creator = new GetCreator("https://api.kanye.rest");
+    // ClientCode(*creator);
+
+    Creator *creator2 = new PostCreator("https://www.google.com", "submit = 1");
+    ClientCode(*creator2);
 
     // GETRequest request("https://www.google.co.in/");
 
