@@ -17,6 +17,7 @@ public:
 
     CURL *curl = curl_easy_init();
     char *url;
+    long response_code;
     string request_headers;
     string response_string;
     string response_headers;
@@ -34,12 +35,20 @@ public:
         curl_easy_setopt(curl, CURLOPT_WRITEDATA, &response_string);
         curl_easy_setopt(curl, CURLOPT_HEADERDATA, &response_headers);
         curl_easy_perform(curl);
-        cout << "Request made succesfully\n";
+        curl_easy_getinfo(curl, CURLINFO_RESPONSE_CODE, &response_code);
+        
+        // cout << "Request made succesfully\n " << response_code;
+    }
+
+    long get_response_code(){
+        return response_code;
     }
 
     virtual string get_url() = 0;
     virtual string get_response_headers() = 0;
     virtual string get_response_data() =0;
+    
+    // virtual bool isHTTP() =0;
 };
 
 
@@ -72,6 +81,9 @@ class GETRequest : public API
     {
         curl_easy_cleanup(curl);
     }
+
+
+    
 };
 
 class POSTRequest : public API{
@@ -122,6 +134,7 @@ class Creator{
 
     string getUrl(){
         API* api = this->FactoryMethod();
+        cout << "URL" << api->get_url();
         return api->get_url();
     }
 
@@ -135,6 +148,11 @@ class Creator{
         API* api = this->FactoryMethod();
         cout << "RESPONSE DATA" <<  api->get_response_data();
         return "Success";
+    }
+
+    long getResponseCode(){
+        API* api = this->FactoryMethod();
+        return api->response_code;
     }
 };
 
@@ -167,9 +185,10 @@ class PostCreator: public Creator{
 };
 void ClientCode(Creator &creator){
     
-    string ans = creator.getUrl();
-    // creator.getHeaders();
+    // creator.getUrl();
+    creator.getHeaders();
     // creator.getResponse();
+    
 };
 
 
@@ -181,11 +200,24 @@ TEST(GETRequestTEST, testingForGET)
 }
 
 
+TEST (APItest, isHTTPS){
+    Creator* creator = new GetCreator("http://google.co.in/");
+    string url = creator->getUrl();
+    string sub = url.substr(0,5);
+    ASSERT_STREQ(sub.c_str(), "https");
+}
+
+TEST (statusCode, is200OK){
+    Creator * creator = new GetCreator("https://www.google.co.in/");
+    long code = creator->getResponseCode();
+    ASSERT_EQ(code, 200);
+}
+
 int main()
 {
 
-    Creator* creator = new GetCreator("https://www.google.com");
-    ClientCode(*creator);    
+    // Creator* creator = new GetCreator("https://www.google.com");
+    // ClientCode(*creator);    
     
     //Creator *creator2 = new PostCreator("http://ptsv2.com/t/lhwz4-1641123474/post", "{\"submit\":\"ishika\",\"submit\":\"1\"}", "Content-Type: application/json");
     //ClientCode(*creator2);
