@@ -3,6 +3,8 @@
 #include <string>
 #include<memory>
 #include<gtest/gtest.h>
+#include <stdexcept>
+#include<regex>
 
 using namespace std;
 
@@ -49,7 +51,7 @@ public:
     virtual string get_response_headers() = 0;
     virtual string get_response_data() =0;
     
-    // virtual bool isHTTP() =0;
+    
 };
 
 
@@ -60,7 +62,6 @@ class GETRequest : public API
     GETRequest(string url){
         set_url(url);
         init_curl_request(); 
-        cout << "Get object created" <<endl;
     }
 
     string get_url()
@@ -91,12 +92,6 @@ class GETRequest : public API
 class POSTRequest : public API{
     public:
 
-    // POSTRequest(string url){
-    //     set_url(url);
-    //     init_curl_request();
-    //     cout << "Post object created" <<endl;
-    // }
-
     POSTRequest(string url, string data, string header){
         set_url(url);
         set_data(data);
@@ -114,8 +109,6 @@ class POSTRequest : public API{
         struct curl_slist *headers = NULL;
         const char *data = header_value.c_str();
         headers = curl_slist_append(headers, data);
-        // headers = curl_slist_append(headers, data);
-        // headers = curl_slist_append(headers, "constant: JSESSIONID=B35E9391E2D699737D30AC6652B8A90E");
         curl_easy_setopt(curl, CURLOPT_HTTPHEADER, headers);
     }
     string get_url()
@@ -143,7 +136,6 @@ class Creator{
     string requestedURL;
 
     Creator<T>(string input){
-        // T t(input);
         shared_ptr<T> p1(new T(input));
         ptr = p1;
     }
@@ -156,6 +148,7 @@ class Creator{
     string GETURL();
     string GETRESPONSE();
     string GETHEADERS();
+    long GETSTATUS();
 };
 
 template <class T>
@@ -176,9 +169,55 @@ string Creator<T>::GETHEADERS(){
     return ptr->get_response_headers();
 }
 
+template <class T>
+long Creator<T>::GETSTATUS(){
+    cout << ptr->get_response_code();
+    return ptr->get_response_code();
+}
 
 
+TEST(STATUSchecking,isOK)
+{
+    Creator<GETRequest> creator("https://www.google.com/");
+    long code = creator.GETSTATUS();
+    try {
+        if(code == 200){
+            throw std::runtime_error("OK");
+        }
+    }
+    catch(std::runtime_error const & err) {
+        EXPECT_EQ(err.what(),std::string("OK"));
+        cout << "Status code verified" <<endl;
+    }
+    catch(...) {
+        FAIL() << "Expected std:: OK";
+    }
+}
 
+TEST(URLchecking, isGoogle)
+{
+    Creator<GETRequest> creator("https://www.google.com/");
+    string url = creator.GETURL();
+    try {
+        if(url.c_str() != "https://www.google.com/home"){
+            throw std::runtime_error("NOT OK");
+        }
+    }
+    catch(std::runtime_error const  &err) {
+        EXPECT_EQ(err.what(),std::string("OK"));
+        cout << "URL not matched" <<endl;
+    }
+    catch(...) {
+        FAIL() << "Expected std:: OK";
+    }
+}
+
+TEST(HTTPCheck, isURL_HTTP)
+{
+    string pattern = "^(https?:\\/\\/)?([\\da-z\\.-]+)\\.([a-z\\.]{2,6})([\\/\\w \\.-]*)*\\/?$";
+    cout << pattern << endl;
+    ASSERT_TRUE(regex_match("https://www.google.co.in/", regex(pattern)));
+}
 
 
 ////////////////////MAIN CODE //////////////////////////////////
@@ -186,12 +225,15 @@ string Creator<T>::GETHEADERS(){
 int main()
 {
 
-    Creator<POSTRequest> creator("https://www.google.com/", "{\"submit\":\"ishika\",\"submit\":\"1\"}", "Content-Type: application/json");
-    creator.GETRESPONSE();
+    // Creator<POSTRequest> creator("https://www.google.com/", "{\"submit\":\"ishika\",\"submit\":\"1\"}", "Content-Type: application/json");
+    // creator.GETRESPONSE();
     
-    Creator<GETRequest> creator2("https://www.google.com/");
-    creator2.GETURL();
-    creator2.GETHEADERS();
+    // Creator<GETRequest> creator2("https://www.google.com/");
+    // creator2.GETURL();
+    // creator2.GETHEADERS();
+
+    testing::InitGoogleTest();
+    return RUN_ALL_TESTS();
 
     return 0;
 }
